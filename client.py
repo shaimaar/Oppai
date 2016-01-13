@@ -241,7 +241,7 @@ class DrawApp:
                 msg_list = data.decode('ascii').strip().split(';')
                 self.handle_server_msgs(msg_list[0], msg_list)
                 print("data:"+str(msg_list))
-        self.root.after(2000, self.interact_with_server)
+        self.root.after(5000, self.interact_with_server)
 
 
     def join_user_to_server(self):
