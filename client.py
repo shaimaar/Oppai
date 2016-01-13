@@ -169,7 +169,8 @@ class DrawApp:
                                 text=shape_tuple[0])
 
     def click(self,event):
-        self.clicks.append((event.x,event.y))
+        self.clicks.append(event.x)
+        self.clicks.append(event.y)
         num_of_clicks = len(self.clicks)
         if ((num_of_clicks == 2 and self.cur_shape != TRIANGLE) or
             (num_of_clicks == 3 and self.cur_shape == TRIANGLE)):
@@ -240,7 +241,7 @@ class DrawApp:
                 msg_list = data.decode('ascii').strip().split(';')
                 self.handle_server_msgs(msg_list[0], msg_list)
                 print("data:"+str(msg_list))
-        self.root.after(10000, self.interact_with_server)
+        self.root.after(2000, self.interact_with_server)
 
 
     def join_user_to_server(self):
