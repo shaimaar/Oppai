@@ -58,9 +58,9 @@ ERROR_WRONG_PARAMETER_NUM = "Wrong number of parameters. The correct usage" \
 BUFFER_SIZE = 1024
 MSG_DELIMITER = b'\n'
 
-
+# todo - perheps make getters and setters to group_name, and user_name,
 class DrawApp:
-    def __init__(self, username):
+    def __init__(self, user_name, group_name, client_socket):
         self.root = tki.Tk()
         self.buttons_list = []
         self.users_of_group = []
@@ -68,9 +68,11 @@ class DrawApp:
         self.colors_list = [RED, BLUE, YELLOW, GREEN, BLACK, VIOLET, ORANGE]
         self.shapes_list = [LINE, RECTANGLE, CIRCLE, TRIANGLE]
 
-        # to present the name of the username on the window
-        self.username = username
-        self.root.title(username)
+        # to present the name of the user_name on the window
+        self.user_name = user_name
+        self.root.title(user_name)
+        self.group_name = group_name
+        self.client_socket = client_socket
 
         self.help_button = tki.Button(text="Help").grid(row=0, column=0)
         self.color_label = Label(self.root, text="Choose a color")
@@ -86,11 +88,12 @@ class DrawApp:
         self.build_color_buttons()
         self.build_shape_buttons()
 
-
         # self.root.after(10,self)
         root = Tk()  # call the constructor of class to create blank window
         # put it in infinite loop, so the window will continuously be displayed till
         # will will press the exit button
+        # todo call interact_with_server
+        self.interact_with_server()
         root.mainloop()
 
 
@@ -175,6 +178,8 @@ class DrawApp:
             self.users_of_group.remove(user_name)
         self.update_users_list_box()
 
+
+
     def curr_group_users(self, curr_group):
         """
         add all of the other users (except the user of the client)
@@ -186,7 +191,7 @@ class DrawApp:
         # run all of the names of users in the group
         for name in curr_group:
             # add the other users to the group
-            if name != self.username:
+            if name != self.user_name:
                 self.users_of_group.append(name)
         self.update_users_list_box()
 
@@ -198,9 +203,97 @@ class DrawApp:
         for user in self.users_of_group:
             self.users_list_box.insert(0, user)
 
+    def interact_with_server(self):
+        """
+
+        :param server_port:
+        :param user_name:
+        :param group_name:
+        :return:
+        """
+
+        self.join_user_to_server()
+
+        # tny = True
+        # while tny:
+        r, w, x = select.select([self.client_socket], [], [], 5)
+        for sock in r:
+            if sock == self.client_socket:
+                data = r[0].recv(BUFFER_SIZE)
+                msg_list = data.decode('ascii').strip().split(';')
+                self.handle_server_msgs(msg_list[0], msg_list)
+                print("data:"+str(msg_list))
+        self.root.after(1000, self.interact_with_server)
 
 
+    def join_user_to_server(self):
+        """
+        Joins new client to an existing or a new group.
+        :return: None.
+        """
+        join_msg = bytes('join;' + user_name + ';' + group_name + '\n', 'ascii')
+        self.client_socket.sendall(join_msg)
 
+
+    # todo test this function
+    def add_shape(self, shape_type, coordinates, color):
+        """
+        Sends the server the details of a new shape that drawn by the client
+        :param shape_type: String representing the name of the shape: rectangle |
+        | triangle | oval | line.
+        :param coordinates: A list representing a list of coordinates
+        :param color:
+        :return: None
+        """
+        # convert list of int coordinated to string
+        coordinates_str = ','.join(str(coord) for coord in coordinates)
+        shape_msg = bytes('shape;' + shape_type + ';' + coordinates_str +
+                          ';' + color + '\n', 'ascii')
+        self.client_socket.sendall(shape_msg)
+
+
+    # todo test this function
+    def leave_client(self):
+        """
+        Informs server that client has ended the session
+        :return: None.
+        """
+        leave_msg = bytes('leave\n', 'ascii')
+        self.client_socket.sendall(leave_msg)
+
+
+    # todo check this function
+    def handle_server_msgs(self, msg_type, msg_list):
+        # todo documentation
+        if msg_type == "join":
+            print("join")
+            joined_user_name = msg_list[1]
+            self.join_user(joined_user_name)
+            # someone joined the same group as this client
+        elif msg_type == "shape":
+            print("shape")
+            shape_user_name = msg_list[1]
+            shape_type = msg_list[2]
+            shape_coordinates = msg_list[3]
+            shape_color = msg_list[4]
+            shape_tuple = (shape_user_name, shape_type, shape_coordinates,
+                           shape_color)
+            # todo call a function that draws the shape
+            self.draw_shape(shape_tuple)
+        elif msg_type == "leave":
+            print("leave")
+            quit_user_name = msg_list[1]
+            #todo call function that updates users list
+            DrawApp.leave_user(quit_user_name)
+        elif msg_type == "users":
+            print("users")
+            current_group_users = msg_list[1].split(',')
+            # todo call function that updates users list
+            self.curr_group_users(current_group_users)
+
+        elif msg_type == "error":
+            error_msg = msg_list[1]
+            print("error")
 
 
 
@@ -229,115 +322,6 @@ def legal_input(user_name, group_name):
         return False
 
 
-def connect_to_server():
-    # todo documentation
-    pass
-
-
-def join_user(socket, user_name, group_name):
-    """
-    Joins new client to an existing or a new group.
-    :param socket: Socket object
-    :param user_name: String representing the user name
-    :param group_name: String representing the group name
-    :return: None.
-    """
-    join_msg = bytes('join;' + user_name + ';' + group_name + '\n', 'ascii')
-    socket.sendall(join_msg)
-
-
-# todo test this function
-def add_shape(socket, shape_type, coordinates, color):
-    """
-    Sends the server the details of a new shape that drawn by the client
-    :param socket: Socket object
-    :param shape_type: String representing the name of the shape: rectangle |
-    | triangle | oval | line.
-    :param coordinates: A list representing a list of coordinates
-    :param color:
-    :return: None
-    """
-    # convert list of int coordinated to string
-    coordinates_str = ','.join(str(coord) for coord in coordinates)
-    shape_msg = bytes('shape;' + shape_type + ';' + coordinates_str +
-                      ';' + color + '\n', 'ascii')
-    socket.sendall(shape_msg)
-
-
-# todo test this function
-def leave_client(socket):
-    """
-    Informs server that client has ended the session
-    :param socket: Socket type object
-    :return: None.
-    """
-    leave_msg = bytes('leave\n', 'ascii')
-    socket.sendall(leave_msg)
-
-
-# todo check this function
-def handle_server_msgs(msg_type, msg_list):
-    # todo documentation
-    if msg_type == "join":
-        print("join")
-        joined_user_name = msg_list[1]
-        DrawApp.join_user(joined_user_name)
-        # someone joined the same group as this client
-    elif msg_type == "shape":
-        print("shape")
-        shape_user_name = msg_list[1]
-        shape_type = msg_list[2]
-        shape_coordinates = msg_list[3]
-        shape_color = msg_list[4]
-        shape_tuple = (shape_user_name, shape_type, shape_coordinates,
-                       shape_color)
-        # todo call a function that draws the shape
-        DrawApp.draw_shape(shape_tuple)
-    elif msg_type == "leave":
-        print("leave")
-        quit_user_name = msg_list[1]
-        #todo call function that updates users list
-        DrawApp.leave_user(quit_user_name)
-    elif msg_type == "users":
-        print("users")
-        current_group_users = msg_list[1].split(',')
-        # todo call function that updates users list
-        DrawApp.curr_group_users(current_group_users)
-
-    elif msg_type == "error":
-        error_msg = msg_list[1]
-        print("error")
-
-    # i  connected user names
-    # ii shapes on panel
-    # 2  join messages of new users
-    # 3  new shapes mgs
-    # 4  disconnection of other users
-    # 5  error msg ??
-
-    pass
-
-
-def interact_with_server(server_address, server_port, user_name, group_name):
-    client_socket = socket.socket()
-    # connect to server
-    client_socket.connect((server_address, server_port))
-    join_user(client_socket, user_name, group_name)
-
-    tny = True
-    while tny:
-        r, w, x = select.select([client_socket], [], [], 5)
-        for sock in r:
-            if sock == client_socket:
-                data = r[0].recv(BUFFER_SIZE)
-                msg_list = data.decode('ascii').strip().split(';')
-                handle_server_msgs(msg_list[0], msg_list)
-                print("data:"+str(msg_list))
-
-    print('hello')
-    client_socket.close()
-
-
 
 if __name__ == '__main__':
     # if len(sys.argv) != PARAMETERS_NUM:
@@ -356,7 +340,14 @@ if __name__ == '__main__':
     user_name = input("enter user name ")
     group_name = input("enter group name ")
     if legal_input(user_name, group_name):
-        gui_environment = DrawApp(user_name)
+        client_socket = socket.socket()
+        # connect to server
+        client_socket.connect((server_address, int(server_port)))
+
+
+        gui_environment = DrawApp(user_name, group_name, client_socket)
+        # gui_environment.root.after(1000, interact_with_server(server_address,
+        #                             int(server_port), user_name, group_name))
         gui_environment.root.mainloop()
         # interact_with_server(server_address, int(server_port), user_name,
         #                      group_name)
@@ -366,4 +357,4 @@ if __name__ == '__main__':
     #       '\nserver port', server_port,
     #       '\nuser name', user_name,
     #       '\ngroup_name', group_name)
-#
+# todo self.client_socket.close()
