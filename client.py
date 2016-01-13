@@ -47,6 +47,9 @@ RECTANGLE = "rectangle"
 CIRCLE = "oval"
 TRIANGLE = "triangle"
 
+DEFAULT_SHAPE = "line"
+DEFAULT_COLOR = "blue"
+
 # messages
 ERROR_USER_NAME_MSG = 'Error. User name must be less than 20 characters'
 ERROR_GROUP_NAME_MSG = 'Error. Group name must be less than 20 characters'
@@ -58,12 +61,17 @@ ERROR_WRONG_PARAMETER_NUM = "Wrong number of parameters. The correct usage" \
 BUFFER_SIZE = 1024
 MSG_DELIMITER = b'\n'
 
+
+
 # todo - perheps make getters and setters to group_name, and user_name,
 class DrawApp:
     def __init__(self, user_name, group_name, client_socket):
         self.root = tki.Tk()
         self.buttons_list = []
+        self.clicks = []
         self.users_of_group = []
+        self.cur_shape = DEFAULT_SHAPE
+        self.cur_color = DEFAULT_COLOR
 
         self.colors_list = [RED, BLUE, YELLOW, GREEN, BLACK, VIOLET, ORANGE]
         self.shapes_list = [LINE, RECTANGLE, CIRCLE, TRIANGLE]
@@ -82,7 +90,7 @@ class DrawApp:
         self.shape_label.grid(row=2, column=0)
 
         self.users_list_box = tki.Listbox()
-        self.users_list_box.grid(row=2, column=0)
+        self.users_list_box.grid(row=3, column=0)
 
         self.create_canvas()
         self.build_color_buttons()
@@ -93,6 +101,8 @@ class DrawApp:
         # put it in infinite loop, so the window will continuously be displayed till
         # will will press the exit button
         # todo call interact_with_server
+
+        self.join_user_to_server()
         self.interact_with_server()
         root.mainloop()
 
@@ -106,20 +116,30 @@ class DrawApp:
     def build_color_buttons(self):
         index = 2
         for color in self.colors_list:
-            curr_color_button = tki.Button(text=color)
+            curr_color_button = tki.Button(text=color, command=self.
+                                           color_buttons_command(color))
             curr_color_button.grid(row=1, column=index)
-            curr_color_button.config(height=20, width=10)
             self.buttons_list.append(curr_color_button)
             index += 1
 
     def build_shape_buttons(self):
         index = 2
-        for color in self.shapes_list:
-            curr_shape_button = tki.Button(text=color)
+        for shape in self.shapes_list:
+            curr_shape_button = tki.Button(text=shape, command=self.
+                                           shape_buttons_command(shape))
             curr_shape_button.grid(row=2, column=index)
-            curr_shape_button.config(height=20, width=10)
             self.buttons_list.append(curr_shape_button)
             index += 1
+
+    def shape_buttons_command(self, shape):
+        def change_cur_shape():
+            self.cur_shape = shape
+        return change_cur_shape
+
+    def color_buttons_command(self, color):
+        def change_cur_color():
+            self.cur_color = color
+        return change_cur_color
 
     def draw_shape(self, shape_tuple):
         """
@@ -150,12 +170,11 @@ class DrawApp:
 
     def click(self,event):
         self.clicks.append((event.x,event.y))
-        if len(self.clicks) == 2 and self.cur_shape != TRIANGLE:
-            self.send_shape_msg()
-            self.clicks.clear()
-        if len(self.clicks) == 3 and self.cur_shape == TRIANGLE:
-            self.send_shape_msg()
-            self.clicks.clear()
+        num_of_clicks = len(self.clicks)
+        if ((num_of_clicks == 2 and self.cur_shape != TRIANGLE) or
+            (num_of_clicks == 3 and self.cur_shape == TRIANGLE)):
+            self.add_shape(self.cur_shape,
+                           self.clicks, self.cur_color)
 
     def join_user(self, user_name):
         """
@@ -212,18 +231,16 @@ class DrawApp:
         :return:
         """
 
-        self.join_user_to_server()
-
         # tny = True
         # while tny:
-        r, w, x = select.select([self.client_socket], [], [], 5)
+        r, w, x = select.select([self.client_socket], [], [], 0.01)
         for sock in r:
             if sock == self.client_socket:
                 data = r[0].recv(BUFFER_SIZE)
                 msg_list = data.decode('ascii').strip().split(';')
                 self.handle_server_msgs(msg_list[0], msg_list)
                 print("data:"+str(msg_list))
-        self.root.after(1000, self.interact_with_server)
+        self.root.after(10000, self.interact_with_server)
 
 
     def join_user_to_server(self):
@@ -245,6 +262,7 @@ class DrawApp:
         :param color:
         :return: None
         """
+        print("call uuuuuuuuu")
         # convert list of int coordinated to string
         coordinates_str = ','.join(str(coord) for coord in coordinates)
         shape_msg = bytes('shape;' + shape_type + ';' + coordinates_str +
