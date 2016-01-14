@@ -21,6 +21,7 @@ from tkinter import *
 # Constants
 ############################################################
 
+MSG_TYPE = 0
 SERVER_ADDRESS = 1
 SERVER_PORT = 2
 USER_NAME = 3
@@ -150,6 +151,7 @@ class DrawApp:
         :param shape_tuple:
         :return:
         """
+        print('draw shape: ', str(shape_tuple))
         coords = shape_tuple[2].split(',')
         # if line
         if shape_tuple[1] == LINE:
@@ -170,6 +172,7 @@ class DrawApp:
                                 text=shape_tuple[0])
 
     def click(self,event):
+        print('click: '+str(event.x)+','+str(event.y))
         self.clicks.append(event.x)
         self.clicks.append(event.y)
         self.num_of_clicks += 1
@@ -177,6 +180,7 @@ class DrawApp:
             (self.num_of_clicks == 3 and self.cur_shape == TRIANGLE)):
             self.add_shape(self.cur_shape,
                            self.clicks, self.cur_color)
+            print("num of clicks: "+str(self.num_of_clicks)+ "shape: "+self.cur_shape)
             self.clicks = []
             self.num_of_clicks = 0
 
@@ -241,9 +245,12 @@ class DrawApp:
         for sock in r:
             if sock == self.client_socket:
                 data = r[0].recv(BUFFER_SIZE)
-                msg_list = data.decode('ascii').strip().split(';')
-                self.handle_server_msgs(msg_list[0], msg_list)
-                print("data:"+str(msg_list))
+                # msg_list = data.decode('ascii').strip().split(';')
+                msg_list = data.decode('ascii').split('\n')
+                for msg in msg_list:
+                    parse_msg_list = msg.split(';')
+                    self.handle_server_msgs(parse_msg_list[MSG_TYPE], parse_msg_list)
+                    print("data:"+str(msg))
         self.root.after(3000, self.interact_with_server)
 
 
