@@ -22,6 +22,8 @@ from tkinter import *
 ############################################################
 
 MSG_TYPE = 0
+MAX_CHAR_LEN = 20
+TIMEOUT  = 0.01
 SERVER_ADDRESS = 1
 SERVER_PORT = 2
 USER_NAME = 3
@@ -172,7 +174,6 @@ class DrawApp:
                                 text=shape_tuple[0])
 
     def click(self,event):
-        print('click: '+str(event.x)+','+str(event.y))
         self.clicks.append(event.x)
         self.clicks.append(event.y)
         self.num_of_clicks += 1
@@ -183,6 +184,8 @@ class DrawApp:
             print("num of clicks: "+str(self.num_of_clicks)+ "shape: "+self.cur_shape)
             self.clicks = []
             self.num_of_clicks = 0
+        print('click: '+str(event.x)+','+str(event.y), "num_of_clicks: "
+                                                       ""+str(self.num_of_clicks))
 
     def join_user(self, user_name):
         """
@@ -232,16 +235,16 @@ class DrawApp:
 
     def interact_with_server(self):
         """
-
-        :param server_port:
-        :param user_name:
-        :param group_name:
-        :return:
+        Checks if a message was received using select, and transfers
+        messages to
+        functions
+        that handle them.
+        :return: None.
         """
 
         # tny = True
         # while tny:
-        r, w, x = select.select([self.client_socket], [], [], 0.01)
+        r, w, x = select.select([self.client_socket], [], [], TIMEOUT)
         for sock in r:
             if sock == self.client_socket:
                 data = r[0].recv(BUFFER_SIZE)
@@ -295,6 +298,12 @@ class DrawApp:
 
     # todo check this function
     def handle_server_msgs(self, msg_type, msg_list):
+        """
+        Handles server messages according to their type.
+        :param msg_type: String representing the type of the message
+        :param msg_list: List of message elements
+        :return: None.
+        """
         # todo documentation
         if msg_type == "join":
             print("join")
@@ -326,8 +335,50 @@ class DrawApp:
             error_msg = msg_list[1]
             print("error")
 
+    def set_user_name(self, user_name):
+        """
+        Sets class user_name parameter to received parameter
+        :param user_name: String representing user name
+        :return: None.
+        """
+        self.user_name = user_name
 
+    def set_group_name(self, group_name):
+        """
+        Sets class group_name parameter to received parameter
+        :param group_name: String representing group name
+        :return: None
+        """
+        self.group_name = group_name
 
+    def set_client_socket(self, socket):
+        """
+        Sets class parameter socket to received parameter
+        :param socket: Socket type object
+        :return: None
+        """
+        self.client_socket = socket
+
+    def get_user_name(self):
+        """
+        Returns the user name of the client
+        :return: String representing the user name of the client
+        """
+        return self.user_name
+
+    def get_group_name(self):
+        """
+        Returns the group name of the client
+        :return: String representing the group name of the client
+        """
+        return self.group_name
+
+    def get_scoket(self):
+        """
+        Returns the socket of the client
+        :return: Socket type object
+        """
+        return self.client_socket
 
 def legal_input(user_name, group_name):
     """
@@ -337,10 +388,10 @@ def legal_input(user_name, group_name):
     :return: Boolean value - False if a parameter isn't legal, else returns
     True
     """
-    if len(user_name) >= 20:
+    if len(user_name) >= MAX_CHAR_LEN:
         print(ERROR_USER_NAME_MSG)
         return False
-    elif len(group_name) >= 20:
+    elif len(group_name) >= MAX_CHAR_LEN:
         print(ERROR_GROUP_NAME_MSG)
         return False
     # Checks is user_name and group_name contain letters and numbers only
