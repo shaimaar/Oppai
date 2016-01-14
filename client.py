@@ -21,19 +21,28 @@ from tkinter import *
 # Constants
 ############################################################
 
-MSG_TYPE = 0
-MAX_CHAR_LEN = 20
-TIMEOUT  = 0.01
+# sys arg parameters
 SERVER_ADDRESS = 1
 SERVER_PORT = 2
 USER_NAME = 3
 GROUP_NAME = 4
 PARAMETERS_NUM = 5
 
+TIME_LAPSE = 3000
+MSG_TYPE = 0
+MAX_CHAR_LEN = 20
+TIMEOUT = 0.05
+USER_NAME_LOC = 1
+ERROR_MSG_LOC = 1
+SHAPE_LOC = 2
+SHAPE_COORD_LOC = 3
+SHAPE_COLOR_LOC = 4
+
 # canvas design
 CANVAS_WIDTH = 500
 CANVAS_HEIGHT = 500
 CANVAS_BACKGROUND = "white"
+CANVAS_BORDER_WIDTH = 10
 
 # for color buttons
 RED = "red"
@@ -86,19 +95,19 @@ class DrawApp:
         self.group_name = group_name
         self.client_socket = client_socket
 
-        self.help_button = tki.Button(text="Help").grid(row=0, column=0)
         self.color_label = Label(self.root, text="Choose a color")
         self.color_label.grid(row=1, column=0)
 
         self.shape_label = Label(self.root, text="Choose a shape")
         self.shape_label.grid(row=2, column=0)
 
-        self.users_list_box = tki.Listbox()
+        self.users_list_box = tki.Listbox(self.root, width=20, height=30)
         self.users_list_box.grid(row=3, column=0)
 
+        self.create_help_menu()
         self.create_canvas()
-        self.build_color_buttons()
-        self.build_shape_buttons()
+        self.create_color_buttons()
+        self.create_shape_buttons()
 
         # self.root.after(10,self)
         root = Tk()  # call the constructor of class to create blank window
@@ -107,41 +116,98 @@ class DrawApp:
         # todo call interact_with_server
 
         self.join_user_to_server()
+
         self.interact_with_server()
+
+
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+
         root.mainloop()
 
+    def on_closing(self):
+        print("GoodBye")
+        self.root.destroy()
+        self.leave_client()
+        self.client_socket.close()
+
+    def create_help_menu(self):
+        """
+        Create help menu with instructions to the user
+        :return:
+        """
+        menu = tki.Menu(self.root)
+        help_menu = tki.Menu(menu, tearoff=0)
+        menu.add_cascade(label="Help", menu=help_menu)
+        help_menu.add_command(label="Instructions", command=self.instructions)
+        self.root.config(menu=menu)
+
+    @staticmethod
+    def instructions():
+        """
+        Present to the user help instructions of the Application
+        :return:
+        """
+        top = tki.Toplevel()
+        top.title("instructions")
+        msg = tki.Message(top, text="App Instructions: Hi, Please choose "
+                                    "color and a shape by clicking the button,"
+                                    "then click on the canvas."
+                                    "3 clicks for triangle, and 2 "
+                                    "clicks for other shapes.")
+        msg.pack()
+
+    @staticmethod
+    def raise_error_msg(err_msg):
+        """
+        Present to the use the error message from server
+        :param err_msg:
+        :return:
+        """
+        top = tki.Toplevel()
+        top.title("Error")
+        msg = tki.Message(top, text=err_msg)
+        msg.pack()
 
     def create_canvas(self):
+        """
+        Create the canvas with the defined width, height and border width
+        Here the user will click.
+        :return:
+        """
         self.canvas = tki.Canvas(self.root, width=CANVAS_WIDTH,\
-                                 height=CANVAS_HEIGHT, bg=CANVAS_BACKGROUND)
+                                 height=CANVAS_HEIGHT,
+                                 borderwidth=CANVAS_BORDER_WIDTH,
+                                 bg=CANVAS_BACKGROUND, relief='raised')
         self.canvas.grid(row=3, column=1)
         self.canvas.bind("<Button-1>", self.click)
 
-    def build_color_buttons(self):
+    def create_color_buttons(self):
         index = 2
         for color in self.colors_list:
-            curr_color_button = tki.Button(text=color, command=self.
-                                           color_buttons_command(color))
-            curr_color_button.grid(row=1, column=index)
+            curr_color_button = tki.Button(text=color,command=
+            self.command_color_buttons(color)).\
+                grid(row=1, column=index, sticky=W)
             self.buttons_list.append(curr_color_button)
             index += 1
 
-    def build_shape_buttons(self):
+    def create_shape_buttons(self):
         index = 2
         for shape in self.shapes_list:
             curr_shape_button = tki.Button(text=shape, command=self.
-                                           shape_buttons_command(shape))
+                                           command_shape_buttons(shape))
             curr_shape_button.grid(row=2, column=index)
             self.buttons_list.append(curr_shape_button)
             index += 1
 
-    def shape_buttons_command(self, shape):
+    def command_shape_buttons(self, shape):
         def change_cur_shape():
             self.clicks = []
             self.cur_shape = shape
         return change_cur_shape
 
-    def color_buttons_command(self, color):
+
+
+    def command_color_buttons(self, color):
         def change_cur_color():
             self.clicks = []
             self.cur_color = color
@@ -167,13 +233,14 @@ class DrawApp:
         # if triangle
         else:
             self.canvas.create_polygon(coords, fill=shape_tuple[3],
-                                       width=3, outline="black")
+                                       width=3)
 
         # draw text on the canvas shape
         self.canvas.create_text(coords[0], coords[1],
                                 text=shape_tuple[0])
 
     def click(self,event):
+        print('click: '+str(event.x)+','+str(event.y))
         self.clicks.append(event.x)
         self.clicks.append(event.y)
         self.num_of_clicks += 1
@@ -184,8 +251,6 @@ class DrawApp:
             print("num of clicks: "+str(self.num_of_clicks)+ "shape: "+self.cur_shape)
             self.clicks = []
             self.num_of_clicks = 0
-        print('click: '+str(event.x)+','+str(event.y), "num_of_clicks: "
-                                                       ""+str(self.num_of_clicks))
 
     def join_user(self, user_name):
         """
@@ -208,8 +273,6 @@ class DrawApp:
             self.users_of_group.remove(user_name)
         self.update_users_list_box()
 
-
-
     def curr_group_users(self, curr_group):
         """
         add all of the other users (except the user of the client)
@@ -221,8 +284,7 @@ class DrawApp:
         # run all of the names of users in the group
         for name in curr_group:
             # add the other users to the group
-            if name != self.user_name:
-                self.users_of_group.append(name)
+            self.users_of_group.append(name)
         self.update_users_list_box()
 
     def update_users_list_box(self):
@@ -230,8 +292,11 @@ class DrawApp:
         update users_list_box by users of users_of_group list
         :return:
         """
+        self.users_list_box.delete(0, tki.END)
+        self.users_list_box.insert(tki.END, self.group_name)
+        self.users_list_box.insert(tki.END, "users online:")
         for user in self.users_of_group:
-            self.users_list_box.insert(0, user)
+            self.users_list_box.insert(tki.END, user)
 
     def interact_with_server(self):
         """
@@ -241,21 +306,15 @@ class DrawApp:
         that handle them.
         :return: None.
         """
-
-        # tny = True
-        # while tny:
         r, w, x = select.select([self.client_socket], [], [], TIMEOUT)
         for sock in r:
             if sock == self.client_socket:
                 data = r[0].recv(BUFFER_SIZE)
-                # msg_list = data.decode('ascii').strip().split(';')
                 msg_list = data.decode('ascii').split('\n')
                 for msg in msg_list:
                     parse_msg_list = msg.split(';')
                     self.handle_server_msgs(parse_msg_list[MSG_TYPE], parse_msg_list)
-                    print("data:"+str(msg))
-        self.root.after(3000, self.interact_with_server)
-
+        self.root.after(TIME_LAPSE, self.interact_with_server)
 
     def join_user_to_server(self):
         """
@@ -265,8 +324,6 @@ class DrawApp:
         join_msg = bytes('join;' + user_name + ';' + group_name + '\n', 'ascii')
         self.client_socket.sendall(join_msg)
 
-
-    # todo test this function
     def add_shape(self, shape_type, coordinates, color):
         """
         Sends the server the details of a new shape that drawn by the client
@@ -276,17 +333,12 @@ class DrawApp:
         :param color:
         :return: None
         """
-        print("call uuuuuuuuu")
-        print(shape_type)
-        print(coordinates)
         # convert list of int coordinated to string
         coordinates_str = ','.join(str(coord) for coord in coordinates)
         shape_msg = bytes('shape;' + shape_type + ';' + coordinates_str +
                           ';' + color + '\n', 'ascii')
         self.client_socket.sendall(shape_msg)
 
-
-    # todo test this function
     def leave_client(self):
         """
         Informs server that client has ended the session
@@ -295,45 +347,39 @@ class DrawApp:
         leave_msg = bytes('leave\n', 'ascii')
         self.client_socket.sendall(leave_msg)
 
-
-    # todo check this function
     def handle_server_msgs(self, msg_type, msg_list):
         """
-        Handles server messages according to their type.
+         Handles server messages according to their type.
         :param msg_type: String representing the type of the message
         :param msg_list: List of message elements
         :return: None.
+        :return:
         """
-        # todo documentation
+        # Client joined existing group
         if msg_type == "join":
-            print("join")
-            joined_user_name = msg_list[1]
+            joined_user_name = msg_list[USER_NAME_LOC]
             self.join_user(joined_user_name)
-            # someone joined the same group as this client
+        # Shape was added
         elif msg_type == "shape":
-            print("shape")
-            shape_user_name = msg_list[1]
-            shape_type = msg_list[2]
-            shape_coordinates = msg_list[3]
-            shape_color = msg_list[4]
+            shape_user_name = msg_list[USER_NAME_LOC]
+            shape_type = msg_list[SHAPE_LOC]
+            shape_coordinates = msg_list[SHAPE_COORD_LOC]
+            shape_color = msg_list[SHAPE_COLOR_LOC]
             shape_tuple = (shape_user_name, shape_type, shape_coordinates,
                            shape_color)
-            # todo call a function that draws the shape
             self.draw_shape(shape_tuple)
+        # A client left the group
         elif msg_type == "leave":
-            print("leave")
-            quit_user_name = msg_list[1]
-            #todo call function that updates users list
-            DrawApp.leave_user(quit_user_name)
+            quit_user_name = msg_list[USER_NAME_LOC]
+            self.leave_user(quit_user_name)
+        # All current users in group
         elif msg_type == "users":
-            print("users")
-            current_group_users = msg_list[1].split(',')
-            # todo call function that updates users list
+            current_group_users = msg_list[USER_NAME_LOC].split(',')
             self.curr_group_users(current_group_users)
-
+        # Error message
         elif msg_type == "error":
-            error_msg = msg_list[1]
-            print("error")
+            error_msg = msg_list[ERROR_MSG_LOC]
+            self.raise_error_msg(error_msg)
 
     def set_user_name(self, user_name):
         """
@@ -351,13 +397,6 @@ class DrawApp:
         """
         self.group_name = group_name
 
-    def set_client_socket(self, socket):
-        """
-        Sets class parameter socket to received parameter
-        :param socket: Socket type object
-        :return: None
-        """
-        self.client_socket = socket
 
     def get_user_name(self):
         """
@@ -379,6 +418,7 @@ class DrawApp:
         :return: Socket type object
         """
         return self.client_socket
+
 
 def legal_input(user_name, group_name):
     """
@@ -404,39 +444,17 @@ def legal_input(user_name, group_name):
         return False
 
 
-
 if __name__ == '__main__':
-    # if len(sys.argv) != PARAMETERS_NUM:
-    #     print(ERROR_WRONG_PARAMETER_NUM)
-    # elif legal_input(sys.argv[USER_NAME], sys.argv[GROUP_NAME]):
-    #     server_address = sys.argv[SERVER_ADDRESS]
-    #     server_port = sys.argv[SERVER_PORT]
-    #     user_name = sys.argv[USER_NAME]
-    #     group_name = sys.argv[GROUP_NAME]
-    # server_address = 'localhost'
-    # server_port = '5678'
-    # user_name = 'Genos'
-    # group_name = 's_class'
-    server_address = input("enter_address ")
-    server_port = input("enter port ")
-    user_name = input("enter user name ")
-    group_name = input("enter group name ")
-    if legal_input(user_name, group_name):
+    if len(sys.argv) != PARAMETERS_NUM:
+        print(ERROR_WRONG_PARAMETER_NUM)
+    elif legal_input(sys.argv[USER_NAME], sys.argv[GROUP_NAME]):
+        server_address = sys.argv[SERVER_ADDRESS]
+        server_port = sys.argv[SERVER_PORT]
+        user_name = sys.argv[USER_NAME]
+        group_name = sys.argv[GROUP_NAME]
+        # create socket and connect to server
         client_socket = socket.socket()
-        # connect to server
         client_socket.connect((server_address, int(server_port)))
-
-
+        # create new GUI object and connect to server
         gui_environment = DrawApp(user_name, group_name, client_socket)
-        # gui_environment.root.after(1000, interact_with_server(server_address,
-        #                             int(server_port), user_name, group_name))
         gui_environment.root.mainloop()
-        # interact_with_server(server_address, int(server_port), user_name,
-        #                      group_name)
-
-    # tests
-    # print('server add ', server_address,
-    #       '\nserver port', server_port,
-    #       '\nuser name', user_name,
-    #       '\ngroup_name', group_name)
-# todo self.client_socket.close()
