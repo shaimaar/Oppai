@@ -353,7 +353,6 @@ class DrawApp:
         :param msg_type: String representing the type of the message
         :param msg_list: List of message elements
         :return: None.
-        :return:
         """
         # Client joined existing group
         if msg_type == "join":
