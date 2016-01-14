@@ -33,13 +33,13 @@ CANVAS_HEIGHT = 500
 CANVAS_BACKGROUND = "white"
 
 # for color buttons
-RED = "Red"
-BLUE = "Blue"
-YELLOW = "Yellow"
-GREEN = "Green"
-BLACK = "Black"
-VIOLET = "Violet"
-ORANGE = "Orange"
+RED = "red"
+BLUE = "blue"
+YELLOW = "yellow"
+GREEN = "green"
+BLACK = "black"
+VIOLET = "violet"
+ORANGE = "orange"
 
 # for shape buttons
 LINE = "line"
@@ -69,6 +69,7 @@ class DrawApp:
         self.root = tki.Tk()
         self.buttons_list = []
         self.clicks = []
+        self.num_of_clicks = 0
         self.users_of_group = []
         self.cur_shape = DEFAULT_SHAPE
         self.cur_color = DEFAULT_COLOR
@@ -133,11 +134,13 @@ class DrawApp:
 
     def shape_buttons_command(self, shape):
         def change_cur_shape():
+            self.clicks = []
             self.cur_shape = shape
         return change_cur_shape
 
     def color_buttons_command(self, color):
         def change_cur_color():
+            self.clicks = []
             self.cur_color = color
         return change_cur_color
 
@@ -147,35 +150,35 @@ class DrawApp:
         :param shape_tuple:
         :return:
         """
+        coords = shape_tuple[2].split(',')
         # if line
         if shape_tuple[1] == LINE:
-            self.canvas.create_line(shape_tuple[2], fill=shape_tuple[3],
-                                    width=3)
+            self.canvas.create_line(coords, fill=shape_tuple[3], width=3)
         # if rectangle
         elif shape_tuple[1] == RECTANGLE:
-            self.canvas.create_rectangle(shape_tuple[2],fill=shape_tuple[3],
-                                         width=3)
+            self.canvas.create_rectangle(coords, fill=shape_tuple[3], width=3)
         # if circle
         elif shape_tuple[1] == CIRCLE:
-            self.canvas.create_oval(shape_tuple[2], fill=shape_tuple[3],
-                                    width=3)
+            self.canvas.create_oval(coords, fill=shape_tuple[3], width=3)
         # if triangle
         else:
-            self.canvas.create_polygon(shape_tuple[2],fill=shape_tuple[3],
+            self.canvas.create_polygon(coords, fill=shape_tuple[3],
                                        width=3, outline="black")
 
         # draw text on the canvas shape
-        self.canvas.create_text(shape_tuple[2][0], shape_tuple[2][1],
+        self.canvas.create_text(coords[0], coords[1],
                                 text=shape_tuple[0])
 
     def click(self,event):
         self.clicks.append(event.x)
         self.clicks.append(event.y)
-        num_of_clicks = len(self.clicks)
-        if ((num_of_clicks == 2 and self.cur_shape != TRIANGLE) or
-            (num_of_clicks == 3 and self.cur_shape == TRIANGLE)):
+        self.num_of_clicks += 1
+        if ((self.num_of_clicks == 2 and self.cur_shape != TRIANGLE) or
+            (self.num_of_clicks == 3 and self.cur_shape == TRIANGLE)):
             self.add_shape(self.cur_shape,
                            self.clicks, self.cur_color)
+            self.clicks = []
+            self.num_of_clicks = 0
 
     def join_user(self, user_name):
         """
@@ -241,7 +244,7 @@ class DrawApp:
                 msg_list = data.decode('ascii').strip().split(';')
                 self.handle_server_msgs(msg_list[0], msg_list)
                 print("data:"+str(msg_list))
-        self.root.after(5000, self.interact_with_server)
+        self.root.after(3000, self.interact_with_server)
 
 
     def join_user_to_server(self):
@@ -264,6 +267,8 @@ class DrawApp:
         :return: None
         """
         print("call uuuuuuuuu")
+        print(shape_type)
+        print(coordinates)
         # convert list of int coordinated to string
         coordinates_str = ','.join(str(coord) for coord in coordinates)
         shape_msg = bytes('shape;' + shape_type + ';' + coordinates_str +
