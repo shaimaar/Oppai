@@ -1,0 +1,42 @@
+shaimaar        orens
+305456261       201557972
+Shai Maarek     Oren Sultan
+
+We discussed the exercise with: Oren Pinto, Inbar Wolff, Miri Galfrin
+
+=============================================================
+=  README for ex12: Client-Server communication and GUI  =
+=============================================================
+
+usage: python3 client.py <server_address> <port_number> <user_name>
+<group_name>
+
+==================
+=  Description:  =
+==================
+
+Implementation of client side of shape drawing game. Each client may connect
+the server by providing a DNS address (local as 'localhost' or public
+'e-intro.cs.huji.ac.il'), port (8000-8003), user name and group name. If
+there's already an existing group with that name, the client will join that
+group. Else, a new group with that name will be created. The list of users
+in the GUI will be updated as users join and leave the platform.
+To create a new shape the client must choose a shape and color. The default
+color is blue and the default shape is a line.
+
+=============================
+=  List of submitted files: =
+=============================
+
+README              This file
+client.py           GUI and Client
+
+======================
+=  Special Comments  =
+======================
+External help:
+Select use: https://docs.python.org/3/library/select.html
+tkinter use: https://docs.python.org/3.0/library/tkinter.html
+tkinter menu: http://www.tutorialspoint.com/python/tk_menu.htm
+after method: http://stackoverflow
+.com/questions/25753632/tkinter-how-to-use-after-method
