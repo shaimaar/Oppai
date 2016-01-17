@@ -1,12 +1,12 @@
 #############################################################
-# FILE : ex10.py
+# FILE : ex12.py
 # Writer #1: Shai Maarek , shaimaar , 305456261
 # Writer #2: Oren Sultan, orens, 201557972
-# DESCRIPTION: #todo
-# Output: #todo
+# DESCRIPTION: Implementation of Client Server and Gui App
+# which allows the clients to draw shapes on screen.
+# Output: GUI and Terminal
 #############################################################
 
-# todo before you assign this delete all print commands
 ############################################################
 # Imports
 ############################################################
@@ -14,8 +14,7 @@ import sys
 import socket
 import re
 import select
-import tkinter as tki
-from tkinter import *
+import tkinter as tk
 
 ############################################################
 # Constants
@@ -28,21 +27,43 @@ USER_NAME = 3
 GROUP_NAME = 4
 PARAMETERS_NUM = 5
 
-TIME_LAPSE = 3000
-MSG_TYPE = 0
+# input validation
 MAX_CHAR_LEN = 20
+
+# time
+TIME_LAPSE = 3000
 TIMEOUT = 0.05
+
+# list indexes
+MSG_TYPE = 0
+MSG_INDEX = 0
 USER_NAME_LOC = 1
 ERROR_MSG_LOC = 1
 SHAPE_LOC = 2
 SHAPE_COORD_LOC = 3
 SHAPE_COLOR_LOC = 4
 
+COORD_X_INDEX = 0
+COORD_Y_INDEX = 1
+
+HELP_MENU_WIDTH = 250
+ERR_MSG_WIDTH = 600
+
+LIST_BOX_WIDTH = 30
+LIST_BOX_HEIGHT = 30
+
+BUTTONS_START_INDEX = 2
+
 # canvas design
 CANVAS_WIDTH = 500
 CANVAS_HEIGHT = 500
 CANVAS_BACKGROUND = "white"
 CANVAS_BORDER_WIDTH = 10
+
+SHAPE_COLOR_INDEX = 3
+SHAPE_COORDS_INDEX = 2
+SHAPE_TYPE_INDEX = 1
+USER_NAME_INDEX = 0
 
 # for color buttons
 RED = "red"
@@ -63,26 +84,38 @@ DEFAULT_SHAPE = "line"
 DEFAULT_COLOR = "blue"
 
 # messages
+
+MSG_DELIMITER = '\n'
 ERROR_USER_NAME_MSG = 'Error. User name must be less than 20 characters'
 ERROR_GROUP_NAME_MSG = 'Error. Group name must be less than 20 characters'
 ERROR_BAD_CHARACTERS_MSG = 'Error. user name and group name must contain ' \
                            'numbers and English characters only'
 ERROR_WRONG_PARAMETER_NUM = "Wrong number of parameters. The correct usage" \
-                            "is:\npython client.py e-intro.cs.huji.ac.il " \
+                            "is:" + MSG_DELIMITER + "" \
+                                                    "python client.py " \
+                                                    "e-intro.cs.huji.ac.il " \
                             "8000,<user_name> <group_name>"
 BUFFER_SIZE = 1024
-MSG_DELIMITER = b'\n'
 
 
-
-# todo - perheps make getters and setters to group_name, and user_name,
 class DrawApp:
+    """
+    Class DrawApp is responsible of the management of the App
+    """
     def __init__(self, user_name, group_name, client_socket):
-        self.root = tki.Tk()
+        """
+        constructor of DrawApp class
+        :param user_name: String representing user name
+        :param group_name: String representing group name
+        :param client_socket: Socket object
+        :return: None
+        """
+        self.root = tk.Tk()
         self.buttons_list = []
         self.clicks = []
         self.num_of_clicks = 0
         self.users_of_group = []
+
         self.cur_shape = DEFAULT_SHAPE
         self.cur_color = DEFAULT_COLOR
 
@@ -90,18 +123,20 @@ class DrawApp:
         self.shapes_list = [LINE, RECTANGLE, CIRCLE, TRIANGLE]
 
         # to present the name of the user_name on the window
-        self.user_name = user_name
+        self._user_name = user_name
         self.root.title(user_name)
-        self.group_name = group_name
-        self.client_socket = client_socket
 
-        self.color_label = Label(self.root, text="Choose a color")
+        self._group_name = group_name
+        self._client_socket = client_socket
+
+        self.color_label = tk.Label(self.root, text="Choose a color")
         self.color_label.grid(row=1, column=0)
 
-        self.shape_label = Label(self.root, text="Choose a shape")
+        self.shape_label = tk.Label(self.root, text="Choose a shape")
         self.shape_label.grid(row=2, column=0)
 
-        self.users_list_box = tki.Listbox(self.root, width=20, height=30)
+        self.users_list_box = tk.Listbox(self.root, width=LIST_BOX_WIDTH,
+                                         height=LIST_BOX_HEIGHT)
         self.users_list_box.grid(row=3, column=0)
 
         self.create_help_menu()
@@ -109,34 +144,33 @@ class DrawApp:
         self.create_color_buttons()
         self.create_shape_buttons()
 
-        # self.root.after(10,self)
-        root = Tk()  # call the constructor of class to create blank window
-        # put it in infinite loop, so the window will continuously be displayed till
-        # will will press the exit button
-        # todo call interact_with_server
-
         self.join_user_to_server()
 
         self.interact_with_server()
 
-
+        # call on_closing when user close the window of App
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
-        root.mainloop()
+        # put it in infinite loop, so the window will continuously
+        # be displayed till will will press the exit button
+        self.root.mainloop()
 
     def on_closing(self):
-        print("GoodBye")
+        """
+        regulated exit from App
+        :return: None
+        """
         self.root.destroy()
         self.leave_client()
-        self.client_socket.close()
+        self._client_socket.close()
 
     def create_help_menu(self):
         """
         Create help menu with instructions to the user
-        :return:
+        :return: None
         """
-        menu = tki.Menu(self.root)
-        help_menu = tki.Menu(menu, tearoff=0)
+        menu = tk.Menu(self.root)
+        help_menu = tk.Menu(menu, tearoff=0)
         menu.add_cascade(label="Help", menu=help_menu)
         help_menu.add_command(label="Instructions", command=self.instructions)
         self.root.config(menu=menu)
@@ -145,70 +179,92 @@ class DrawApp:
     def instructions():
         """
         Present to the user help instructions of the Application
-        :return:
+        :return: None
         """
-        top = tki.Toplevel()
+        top = tk.Toplevel()
         top.title("instructions")
-        msg = tki.Message(top, text="App Instructions: Hi, Please choose "
-                                    "color and a shape by clicking the button,"
-                                    "then click on the canvas."
-                                    "3 clicks for triangle, and 2 "
-                                    "clicks for other shapes.")
+        msg = tk.Message(top, text="App Instructions: Hi, Please choose "
+                                   "color and a shape by clicking the button "
+                                   "then click on the canvas."
+                                   "3 clicks for triangle, and 2 "
+                                   "clicks for other shapes.",
+                         width=HELP_MENU_WIDTH)
         msg.pack()
 
     @staticmethod
     def raise_error_msg(err_msg):
         """
         Present to the use the error message from server
-        :param err_msg:
-        :return:
+        :param err_msg: String representing error message
+        :return: None
         """
-        top = tki.Toplevel()
+        top = tk.Toplevel()
         top.title("Error")
-        msg = tki.Message(top, text=err_msg)
+        msg = tk.Message(top, text=err_msg, width=ERR_MSG_WIDTH)
         msg.pack()
 
     def create_canvas(self):
         """
         Create the canvas with the defined width, height and border width
-        Here the user will click.
-        :return:
+        Here the user will click to draw the shapes
+        :return: None
         """
-        self.canvas = tki.Canvas(self.root, width=CANVAS_WIDTH,\
-                                 height=CANVAS_HEIGHT,
-                                 borderwidth=CANVAS_BORDER_WIDTH,
-                                 bg=CANVAS_BACKGROUND, relief='raised')
+        self.canvas = \
+            tk.Canvas(self.root, width=CANVAS_WIDTH,
+                      height=CANVAS_HEIGHT,
+                      borderwidth=CANVAS_BORDER_WIDTH,
+                      bg=CANVAS_BACKGROUND, relief='raised')
         self.canvas.grid(row=3, column=1)
         self.canvas.bind("<Button-1>", self.click)
 
     def create_color_buttons(self):
-        index = 2
+        """
+        Create a list of buttons for colors
+        call command_color_buttons to change the cur_color accordingly
+        :return: None
+        """
+        index = BUTTONS_START_INDEX
         for color in self.colors_list:
-            curr_color_button = tki.Button(text=color,command=
-            self.command_color_buttons(color)).\
-                grid(row=1, column=index, sticky=W)
+            curr_color_button = tk.Button(text=color,
+                                          command=self.command_color_buttons
+                                          (color)).\
+                grid(row=1, column=index, sticky=tk.W)
             self.buttons_list.append(curr_color_button)
             index += 1
 
     def create_shape_buttons(self):
-        index = 2
+        """
+        Create a list of buttons for shapes
+        call command_shape_buttons to change the cur_shape accordingly
+        :return: None
+        """
+        index = BUTTONS_START_INDEX
         for shape in self.shapes_list:
-            curr_shape_button = tki.Button(text=shape, command=self.
-                                           command_shape_buttons(shape))
+            curr_shape_button = tk.Button(text=shape,
+                                          command=self.command_shape_buttons
+                                          (shape))
             curr_shape_button.grid(row=2, column=index)
             self.buttons_list.append(curr_shape_button)
             index += 1
 
     def command_shape_buttons(self, shape):
+        """
+        :param shape: String representing shape name
+        :return: the new selected shape
+        """
         def change_cur_shape():
+            # it's a new choice of shape, so initialize the clicks list
             self.clicks = []
             self.cur_shape = shape
         return change_cur_shape
 
-
-
     def command_color_buttons(self, color):
+        """
+        :param color: Sting representing color name
+        :return: the new selected color
+        """
         def change_cur_color():
+            # it's a new choice of color, so initialize the clicks list
             self.clicks = []
             self.cur_color = color
         return change_cur_color
@@ -216,48 +272,59 @@ class DrawApp:
     def draw_shape(self, shape_tuple):
         """
         draw a shape in a specific color and position according to user
-        :param shape_tuple:
-        :return:
+        :param shape_tuple: Tuple type object with shape's details
+        :return: None
         """
-        print('draw shape: ', str(shape_tuple))
-        coords = shape_tuple[2].split(',')
+        # extract the coordinates
+        coords = shape_tuple[SHAPE_COORDS_INDEX].split(',')
         # if line
-        if shape_tuple[1] == LINE:
-            self.canvas.create_line(coords, fill=shape_tuple[3], width=3)
+        if shape_tuple[SHAPE_TYPE_INDEX] == LINE:
+            self.canvas.create_line(coords,
+                                    fill=shape_tuple[SHAPE_COLOR_INDEX])
         # if rectangle
-        elif shape_tuple[1] == RECTANGLE:
-            self.canvas.create_rectangle(coords, fill=shape_tuple[3], width=3)
+        elif shape_tuple[SHAPE_TYPE_INDEX] == RECTANGLE:
+            self.canvas.create_rectangle(coords,
+                                         fill=shape_tuple[SHAPE_COLOR_INDEX])
         # if circle
-        elif shape_tuple[1] == CIRCLE:
-            self.canvas.create_oval(coords, fill=shape_tuple[3], width=3)
+        elif shape_tuple[SHAPE_TYPE_INDEX] == CIRCLE:
+            self.canvas.create_oval(coords,
+                                    fill=shape_tuple[SHAPE_COLOR_INDEX])
         # if triangle
         else:
-            self.canvas.create_polygon(coords, fill=shape_tuple[3],
-                                       width=3)
+            self.canvas.create_polygon(coords,
+                                       fill=shape_tuple[SHAPE_COLOR_INDEX])
 
         # draw text on the canvas shape
-        self.canvas.create_text(coords[0], coords[1],
-                                text=shape_tuple[0])
+        self.canvas.create_text(coords[COORD_X_INDEX], coords[COORD_Y_INDEX],
+                                text=shape_tuple[USER_NAME_INDEX])
 
-    def click(self,event):
-        print('click: '+str(event.x)+','+str(event.y))
+    def click(self, event):
+        """
+        listener to click event, we will extract the coords and draw the
+        suitable shape according to user request
+        :param event: Event type object
+        :return: None
+        """
+        # coordinates of user click
         self.clicks.append(event.x)
         self.clicks.append(event.y)
+
         self.num_of_clicks += 1
+        # only in this case we will want to draw a shape
         if ((self.num_of_clicks == 2 and self.cur_shape != TRIANGLE) or
             (self.num_of_clicks == 3 and self.cur_shape == TRIANGLE)):
-            self.add_shape(self.cur_shape,
-                           self.clicks, self.cur_color)
-            print("num of clicks: "+str(self.num_of_clicks)+ "shape: "+self.cur_shape)
+            # call add shape to informs the server
+            self.add_shape(self.cur_shape, self.clicks, self.cur_color)
+            # initialize clicks list and num of clicks
             self.clicks = []
             self.num_of_clicks = 0
-
+    #todo remove
     def join_user(self, user_name):
         """
         add user to users_of_group list
         call update_users_list_box, so we will see the update on screen
-        :param user_name:
-        :return:
+        :param user_name: String representing user name
+        :return: None
         """
         self.users_of_group.append(user_name)
         self.update_users_list_box()
@@ -266,8 +333,8 @@ class DrawApp:
         """
         remove the user from users_of_group list if he left
         call update_users_list_box, so we will see the update on screen
-        :param user_name:
-        :return:
+        :param user_name: String representing user name
+        :return: None
         """
         if user_name in self.users_of_group:
             self.users_of_group.remove(user_name)
@@ -275,11 +342,10 @@ class DrawApp:
 
     def curr_group_users(self, curr_group):
         """
-        add all of the other users (except the user of the client)
-        to users_of_group list.
-        call update_userts_list_box, so we will see the update on screen
-        :param curr_group:
-        :return:
+        add all of the users to users of group list
+        call update_users_list_box, so we will see the update on screen
+        :param curr_group: Sting representing group name
+        :return: None
         """
         # run all of the names of users in the group
         for name in curr_group:
@@ -290,13 +356,18 @@ class DrawApp:
     def update_users_list_box(self):
         """
         update users_list_box by users of users_of_group list
-        :return:
+        :return: None
         """
-        self.users_list_box.delete(0, tki.END)
-        self.users_list_box.insert(tki.END, self.group_name)
-        self.users_list_box.insert(tki.END, "users online:")
+        # first delete the users_list_box, then insert all of the users.
+        # in order to avoid duplicates
+        self.users_list_box.delete(0, tk.END)
+
+        self.users_list_box.insert(tk.END, self._group_name)
+        self.users_list_box.insert(tk.END, "users online:")
+
+        # add all of users which are belong to this group
         for user in self.users_of_group:
-            self.users_list_box.insert(tki.END, user)
+            self.users_list_box.insert(tk.END, user)
 
     def interact_with_server(self):
         """
@@ -306,14 +377,15 @@ class DrawApp:
         that handle them.
         :return: None.
         """
-        r, w, x = select.select([self.client_socket], [], [], TIMEOUT)
+        r, w, x = select.select([self._client_socket], [], [], TIMEOUT)
         for sock in r:
-            if sock == self.client_socket:
-                data = r[0].recv(BUFFER_SIZE)
-                msg_list = data.decode('ascii').split('\n')
+            if sock == self._client_socket:
+                data = r[MSG_INDEX].recv(BUFFER_SIZE)
+                msg_list = data.decode('ascii').split(MSG_DELIMITER)
                 for msg in msg_list:
                     parse_msg_list = msg.split(';')
-                    self.handle_server_msgs(parse_msg_list[MSG_TYPE], parse_msg_list)
+                    self.handle_server_msgs(parse_msg_list[MSG_TYPE],
+                                            parse_msg_list)
         self.root.after(TIME_LAPSE, self.interact_with_server)
 
     def join_user_to_server(self):
@@ -321,13 +393,15 @@ class DrawApp:
         Joins new client to an existing or a new group.
         :return: None.
         """
-        join_msg = bytes('join;' + user_name + ';' + group_name + '\n', 'ascii')
-        self.client_socket.sendall(join_msg)
+        join_msg = bytes('join;' + self._user_name + ';' + group_name +
+                         MSG_DELIMITER, 'ascii')
+        self._client_socket.sendall(join_msg)
 
     def add_shape(self, shape_type, coordinates, color):
         """
         Sends the server the details of a new shape that drawn by the client
-        :param shape_type: String representing the name of the shape: rectangle |
+        :param shape_type: String representing the name of the shape:
+        rectangle |
         | triangle | oval | line.
         :param coordinates: A list representing a list of coordinates
         :param color:
@@ -336,16 +410,16 @@ class DrawApp:
         # convert list of int coordinated to string
         coordinates_str = ','.join(str(coord) for coord in coordinates)
         shape_msg = bytes('shape;' + shape_type + ';' + coordinates_str +
-                          ';' + color + '\n', 'ascii')
-        self.client_socket.sendall(shape_msg)
+                          ';' + color + MSG_DELIMITER, 'ascii')
+        self._client_socket.sendall(shape_msg)
 
     def leave_client(self):
         """
         Informs server that client has ended the session
         :return: None.
         """
-        leave_msg = bytes('leave\n', 'ascii')
-        self.client_socket.sendall(leave_msg)
+        leave_msg = bytes('leave'+MSG_DELIMITER, 'ascii')
+        self._client_socket.sendall(leave_msg)
 
     def handle_server_msgs(self, msg_type, msg_list):
         """
@@ -380,43 +454,43 @@ class DrawApp:
             error_msg = msg_list[ERROR_MSG_LOC]
             self.raise_error_msg(error_msg)
 
+#todo delete this function
     def set_user_name(self, user_name):
         """
         Sets class user_name parameter to received parameter
         :param user_name: String representing user name
         :return: None.
         """
-        self.user_name = user_name
-
+        self._user_name = user_name
+#todo delete this function
     def set_group_name(self, group_name):
         """
         Sets class group_name parameter to received parameter
         :param group_name: String representing group name
         :return: None
         """
-        self.group_name = group_name
-
+        self._group_name = group_name
 
     def get_user_name(self):
         """
         Returns the user name of the client
         :return: String representing the user name of the client
         """
-        return self.user_name
+        return self._user_name
 
     def get_group_name(self):
         """
         Returns the group name of the client
         :return: String representing the group name of the client
         """
-        return self.group_name
+        return self._group_name
 
     def get_scoket(self):
         """
         Returns the socket of the client
         :return: Socket type object
         """
-        return self.client_socket
+        return self._client_socket
 
 
 def legal_input(user_name, group_name):
@@ -434,9 +508,9 @@ def legal_input(user_name, group_name):
         print(ERROR_GROUP_NAME_MSG)
         return False
     # Checks is user_name and group_name contain letters and numbers only
-    elif re.match("^[A-Za-z0-9]*$", user_name) and re.match("^["
-                                                            "A-Za-z0-9]*$",
-                                                            group_name):
+    # using regular expression
+    elif re.match("^[A-Za-z0-9]*$", user_name) and re.match(
+            "^[""A-Za-z0-9]*$", group_name):
         return True
     else:
         print(ERROR_BAD_CHARACTERS_MSG)
@@ -456,4 +530,3 @@ if __name__ == '__main__':
         client_socket.connect((server_address, int(server_port)))
         # create new GUI object and connect to server
         gui_environment = DrawApp(user_name, group_name, client_socket)
-        gui_environment.root.mainloop()
