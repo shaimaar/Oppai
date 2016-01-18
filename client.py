@@ -318,7 +318,7 @@ class DrawApp:
             # initialize clicks list and num of clicks
             self.clicks = []
             self.num_of_clicks = 0
-    #todo remove
+
     def join_user(self, user_name):
         """
         add user to users_of_group list
@@ -393,7 +393,7 @@ class DrawApp:
         Joins new client to an existing or a new group.
         :return: None.
         """
-        join_msg = bytes('join;' + self._user_name + ';' + group_name +
+        join_msg = bytes('join;' + self._user_name + ';' + self._group_name +
                          MSG_DELIMITER, 'ascii')
         self._client_socket.sendall(join_msg)
 
@@ -453,23 +453,6 @@ class DrawApp:
         elif msg_type == "error":
             error_msg = msg_list[ERROR_MSG_LOC]
             self.raise_error_msg(error_msg)
-
-#todo delete this function
-    def set_user_name(self, user_name):
-        """
-        Sets class user_name parameter to received parameter
-        :param user_name: String representing user name
-        :return: None.
-        """
-        self._user_name = user_name
-#todo delete this function
-    def set_group_name(self, group_name):
-        """
-        Sets class group_name parameter to received parameter
-        :param group_name: String representing group name
-        :return: None
-        """
-        self._group_name = group_name
 
     def get_user_name(self):
         """
