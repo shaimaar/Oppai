@@ -29,6 +29,7 @@ PARAMETERS_NUM = 5
 
 # input validation
 MAX_CHAR_LEN = 20
+NO_INPUT = 0
 
 # time
 TIME_LAPSE = 3000
@@ -85,7 +86,8 @@ DEFAULT_COLOR = "blue"
 
 # messages
 MSG_DELIMITER = '\n'
-ERROR_INPUT_MSG = 'Error. Input must be less than 20 characters'
+ERROR_INPUT_20_MSG = 'Error. Input must be less than 20 characters.'
+ERROR_INPUT_0_MSG = 'Error. Please enter a string.'
 ENTER_NEW_USER_NAME_MSG = 'Please choose a new user name consisted of ' \
                               'numbers and letters and less then 20 letters: '
 ENTER_NEW_GROUP_NAME_MSG = 'Please choose a new group name consisted of ' \
@@ -483,10 +485,14 @@ def legal_input(name):
     True
     """
     if len(name) >= MAX_CHAR_LEN:
-        print(ERROR_INPUT_MSG)
+        print(ERROR_INPUT_20_MSG)
+        return False
+    elif len(name) == NO_INPUT:
+        print(ERROR_INPUT_0_MSG)
         return False
     # Checks is name contains letters and numbers only using regular expression
-    elif re.match("^[\w\d_-]*$", name):
+    # elif re.match("^[\w\d]*$", name):
+    elif re.match("^[A-Za-z0-9]*$", name):
         return True
     else:
         return False
