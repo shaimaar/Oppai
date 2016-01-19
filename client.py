@@ -84,16 +84,15 @@ DEFAULT_SHAPE = "line"
 DEFAULT_COLOR = "blue"
 
 # messages
-
 MSG_DELIMITER = '\n'
-ERROR_USER_NAME_MSG = 'Error. User name must be less than 20 characters'
-ERROR_GROUP_NAME_MSG = 'Error. Group name must be less than 20 characters'
-ERROR_BAD_CHARACTERS_MSG = 'Error. user name and group name must contain ' \
-                           'numbers and English characters only'
+ERROR_INPUT_MSG = 'Error. Input must be less than 20 characters'
+ENTER_NEW_USER_NAME_MSG = 'Please choose a new user name consisted of ' \
+                              'numbers and letters and less then 20 letters: '
+ENTER_NEW_GROUP_NAME_MSG = 'Please choose a new group name consisted of ' \
+                              'numbers and letters and less then 20 letters: '
 ERROR_WRONG_PARAMETER_NUM = "Wrong number of parameters. The correct usage" \
-                            "is:" + MSG_DELIMITER + "" \
-                                                    "python client.py " \
-                                                    "e-intro.cs.huji.ac.il " \
+                            "is:" + MSG_DELIMITER + "python client.py " \
+                            "e-intro.cs.huji.ac.il " \
                             "8000,<user_name> <group_name>"
 BUFFER_SIZE = 1024
 
@@ -475,39 +474,36 @@ class DrawApp:
         """
         return self._client_socket
 
-
-def legal_input(user_name, group_name):
+def legal_input(name):
     """
-    Receives the user name and group name and checks if they're legal.
-    :param user_name: String representing the user name
-    :param group_name: String representing the group name
+    Receives a string and checks if it's 20 characters or less, and if it
+    contains letters and numbers only.
+    :param name: String.
     :return: Boolean value - False if a parameter isn't legal, else returns
     True
     """
-    if len(user_name) >= MAX_CHAR_LEN:
-        print(ERROR_USER_NAME_MSG)
+    if len(name) >= MAX_CHAR_LEN:
+        print(ERROR_INPUT_MSG)
         return False
-    elif len(group_name) >= MAX_CHAR_LEN:
-        print(ERROR_GROUP_NAME_MSG)
-        return False
-    # Checks is user_name and group_name contain letters and numbers only
-    # using regular expression
-    elif re.match("^[A-Za-z0-9]*$", user_name) and re.match(
-            "^[""A-Za-z0-9]*$", group_name):
+    # Checks is name contains letters and numbers only using regular expression
+    elif re.match("^[\w\d_-]*$", name):
         return True
     else:
-        print(ERROR_BAD_CHARACTERS_MSG)
         return False
 
 
 if __name__ == '__main__':
     if len(sys.argv) != PARAMETERS_NUM:
         print(ERROR_WRONG_PARAMETER_NUM)
-    elif legal_input(sys.argv[USER_NAME], sys.argv[GROUP_NAME]):
-        server_address = sys.argv[SERVER_ADDRESS]
-        server_port = sys.argv[SERVER_PORT]
+    else:
         user_name = sys.argv[USER_NAME]
         group_name = sys.argv[GROUP_NAME]
+        server_address = sys.argv[SERVER_ADDRESS]
+        server_port = sys.argv[SERVER_PORT]
+        while not legal_input(user_name):
+            user_name = input(ENTER_NEW_USER_NAME_MSG)
+        while not legal_input(group_name):
+            group_name = input(ENTER_NEW_GROUP_NAME_MSG)
         # create socket and connect to server
         client_socket = socket.socket()
         client_socket.connect((server_address, int(server_port)))
